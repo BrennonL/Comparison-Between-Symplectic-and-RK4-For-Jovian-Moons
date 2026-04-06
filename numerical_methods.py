@@ -9,7 +9,14 @@ def galilean_forces(state_vec:np.ndarray, system_info, t):
     system_states = [entry[-6:] for entry in system_info]
     body_masses = [entry[0] for entry in system_info]
     G = 6.67430e-20 # km^3 kg^-1 s^-2
-
+    state_derivative:np.ndarray = np.array([
+        state_vec[7], # v1
+        state_vec[8], # v2
+        state_vec[9], # v3
+        0,            # a1
+        0,            # a2
+        0             # a3
+    ])
     for state_vecO in system_states:
         if state_vec != state_vecO:
             r_vec:np.ndarray = np.array([state_vec[0:3] - state_vecO[0:3]])
@@ -17,13 +24,16 @@ def galilean_forces(state_vec:np.ndarray, system_info, t):
             r_mag:np.ndarray = np.linalg.norm(r_vec) # magnitude of r vector
             force_mag = G * body_masses[system_states.index(state_vec)] * body_masses[system_states.index(state_vecO)] / r_mag**2
             force_vec = [force_mag*r_vec[0] / r_mag, force_mag*r_vec[1] / r_mag, force_mag * r_vec[2] / r_mag]
-            state_vec[7] += force_vec[0]
-            state_vec[8] += force_vec[1]
-            state_vec[9] += force_vec[2]
+            # ! originally you were just adding the acceleration to the velocity of the og state vector
+            state_derivative[7] += force_vec[0]
+            state_derivative[8] += force_vec[1]
+            state_derivative[9] += force_vec[2]
+    
+    return state_derivative
 
 
 def RK4(f:Callable, state_vec0:np.ndarray, t0:int, tf:int, h:int):
-    t = t0
+    t:int = t0
     state_vec:np.ndarray = state_vec0
     step_count = (tf - t0) / h 
     for i in range(int(step_count)):
@@ -36,7 +46,7 @@ def RK4(f:Callable, state_vec0:np.ndarray, t0:int, tf:int, h:int):
         # state_vec.append(state_vec) #! Why re-append the state vector? This becomse [r1,r2,r3,v1,v2,v3,[r1,r2,r3,v1,v2,v3]]
     return state_vec
 
-def stormer_verlet(f, state_vec0, t0, tf, h):
+def stormer_verlet(f:Callable, state_vec0:np.ndarray, t0:int, tf:int, h:int):
     t:int = t0
     state_vec:list[float] = state_vec0
     step_count:float = (tf - t0) / h 
