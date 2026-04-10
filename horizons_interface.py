@@ -71,8 +71,8 @@ def get_reference_ephemerides():
                 float(m.group("vz")),
             ])
 
-    print(vectors_io[0])
-    print(len(vectors_io))
+    #print(vectors_io[0])
+    #print(len(vectors_io))
 
 # This is just the step size for entries in the queried
 # ephemeris. Our numerical methods will have to use much 
@@ -135,8 +135,8 @@ def get_reference_ephemerides():
                 float(m.group("vz")),
             ])
 
-    print(vectors_europa[0])
-    print(len(vectors_europa))
+    #print(vectors_europa[0])
+    #print(len(vectors_europa))
 
     # Ganymede query
 
@@ -195,8 +195,8 @@ def get_reference_ephemerides():
                 float(m.group("vz")),
             ])
 
-    print(vectors_ganymede[0])
-    print(len(vectors_ganymede))
+    #print(vectors_ganymede[0])
+    #print(len(vectors_ganymede))
 
 
     # Callisto query
@@ -256,8 +256,8 @@ def get_reference_ephemerides():
                 float(m.group("vz")),
             ])
 
-    print(vectors_callisto[0])
-    print(len(vectors_callisto))
+    #print(vectors_callisto[0])
+    #print(len(vectors_callisto))
 
     ephemerides = (vectors_io, vectors_europa, vectors_ganymede, vectors_callisto)
 
