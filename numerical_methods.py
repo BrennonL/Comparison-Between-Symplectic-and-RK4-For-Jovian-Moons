@@ -5,11 +5,11 @@ import numpy as np
 from typing import Callable
 
 
-[[[iostate1],[iostate2],[iostate3]],[ganymedestate1],[ganymedestate2]]
+# [[[iostate1],[iostate2],[iostate3]],[ganymedestate1],[ganymedestate2]]
 
-[[io], [gany], [next]]
+# [[io], [gany], [next]]
 
-def galilean_forces(initial_states:list, masses:list):
+def galilean_forces(state_vec:list, system_states:list, initial_states:list, masses:list):
     # Extracting the state vectors for the system bodies from system_info
     system_states = [entry[-6:] for entry in system_info]
     body_masses = [entry[0] for entry in system_info]
@@ -47,13 +47,45 @@ def states_time_hist(states0:list, masses:list, f:Callable, t0:int, tf:int, h:in
     :returns: A list of all the states between the initial and final time
     """
     ...
-    state_ephemeris = [states0];
-    states = states0
+    state_ephemeris:list[list[float]] = [states0];
+    curr_state = states0
+    io_states:list[list[float]] = []
+    ganymede_states:list[list[float]] = []
+    callisto_states:list[list[float]] = []
+    europa_states:list[list[float]] = []
+
+    total_time = tf - t0
 
     # Set up time step loop
     i = t0
-    while i < tf:
+    # io
+    while i < total_time:
+        next_state = RK4(curr_state, h, t0, galilean_forces)
+        state_ephemeris.append(next_state)
+        curr_state = next_state
         i += h
+    
+    # ganymede
+    while i < total_time:
+        next_state = RK4(curr_state, h, t0, galilean_forces)
+        state_ephemeris.append(next_state)
+        curr_state = next_state
+        i += h
+
+    # callisto
+    while i < total_time:
+        next_state = RK4(curr_state, h, t0, galilean_forces)
+        state_ephemeris.append(next_state)
+        curr_state = next_state
+        i += h
+
+    # europa
+    while i < total_time:
+        next_state = RK4(curr_state, h, t0, galilean_forces)
+        state_ephemeris.append(next_state)
+        curr_state = next_state
+        i += h
+    return state_ephemeris
         
     
 
