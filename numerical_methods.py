@@ -3,15 +3,38 @@
 
 import numpy as np
 from typing import Callable
-
-
+from constants import (
+    MU_JUPITER_km
+)
+from math import ceil
+from enum import Enum
 # [[[iostate1],[iostate2],[iostate3]],[ganymedestate1],[ganymedestate2]]
 
 # [[io], [gany], [next]]
 
-def galilean_forces(state_vec:list, system_states:list, initial_states:list, masses:list):
+{
+    "io": [
+        "mass",
+        [r1,r2,r3,v1,v2,v3]
+    ]
+}
+class Moon(Enum):
+    IO=1
+    EUROPA=2
+
+def galilean_forces(
+        moon:int,
+        system_states:list[list[float]], 
+        masses:list[float]
+)->list[float,float,float,float,float,float]:
+    """
+    Calculates the state derivative for the specified moon
+    :param state_vec: The state vector of a specific moon
+    :param system_states: The state vector of all the moons at a specific time
+    :param masses: Masses of all the moons
+    :returns: Returns the acclerationn state vector for the specified moon
+    """
     # Extracting the state vectors for the system bodies from system_info
-    system_states = [entry[-6:] for entry in system_info]
     body_masses = [entry[0] for entry in system_info]
     G = 6.67430e-20 # km^3 kg^-1 s^-2
     state_derivative:np.ndarray = np.array([
@@ -34,7 +57,29 @@ def galilean_forces(state_vec:list, system_states:list, initial_states:list, mas
     
     return state_derivative
 
+def forces(x:list[float])->list[float]:
+    """
+    
+    """
+    x:np.ndarray = np.array(x)
+    Mu = (M + m) * G
+    a_grav = - MU_JUPITER_km * (x/(np.linalg.norm(x)**2))
+    a = a_grav
+    return [
+        x[3],
+        x[4],
+        x[5],
+        a[0],
+        a[1],
+        a[2]
+    ]
+
 def states_time_hist(states0:list, masses:list, f:Callable, t0:int, tf:int, h:int):
+    
+    step_size_nom = (tf-t0)/h
+    step_size = ceil(step_size_nom)
+    
+    
     """
     This function takes one of the integrators and  masses of the moons and 
       loops through the time history, applying the times to the integrator
@@ -55,33 +100,39 @@ def states_time_hist(states0:list, masses:list, f:Callable, t0:int, tf:int, h:in
     europa_states:list[list[float]] = []
 
     total_time = tf - t0
+    next_state [
+        [],
+        [],
+        [],
+        []
+    ]
 
     # Set up time step loop
     i = t0
     # io
     while i < total_time:
-        next_state = RK4(curr_state, h, t0, galilean_forces)
+        next_state = f(curr_state, h, t0, galilean_forces)
         state_ephemeris.append(next_state)
         curr_state = next_state
         i += h
     
     # ganymede
     while i < total_time:
-        next_state = RK4(curr_state, h, t0, galilean_forces)
+        next_state = f(curr_state, h, t0, galilean_forces)
         state_ephemeris.append(next_state)
         curr_state = next_state
         i += h
 
     # callisto
     while i < total_time:
-        next_state = RK4(curr_state, h, t0, galilean_forces)
+        next_state = f(curr_state, h, t0, galilean_forces)
         state_ephemeris.append(next_state)
         curr_state = next_state
         i += h
 
     # europa
     while i < total_time:
-        next_state = RK4(curr_state, h, t0, galilean_forces)
+        next_state = f(curr_state, h, t0, galilean_forces)
         state_ephemeris.append(next_state)
         curr_state = next_state
         i += h

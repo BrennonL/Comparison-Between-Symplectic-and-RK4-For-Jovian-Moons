@@ -13,10 +13,10 @@ def main():
     vectors_europa_init = vectors_europa[0]
     vectors_ganymede_init = vectors_ganymede[0]
     vectors_callisto_init = vectors_callisto[0]
-    print("io ==", vectors_io_init)
-    print("europa == ",vectors_europa_init)
-    print("ganymede == ", vectors_ganymede_init)
-    print("callisto == ", vectors_callisto_init)
+    print("io ==", vectors_io_init) #1
+    print("europa == ",vectors_europa_init) #2
+    print("ganymede == ", vectors_ganymede_init) #3
+    print("callisto == ", vectors_callisto_init) #4
     
 
 
