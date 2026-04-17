@@ -12,20 +12,15 @@ from enum import Enum
 
 # [[io], [gany], [next]]
 
-{
-    "io": [
-        "mass",
-        [r1,r2,r3,v1,v2,v3]
-    ]
-}
 class Moon(Enum):
     IO=1
     EUROPA=2
 
 def galilean_forces(
-        moon:int,
+        state_vec:list[float],
         system_states:list[list[float]], 
-        masses:list[float]
+        moon_mus:list[float],
+        Jupiter_mu:float,
 )->list[float,float,float,float,float,float]:
     """
     Calculates the state derivative for the specified moon
@@ -34,108 +29,56 @@ def galilean_forces(
     :param masses: Masses of all the moons
     :returns: Returns the acclerationn state vector for the specified moon
     """
-    # Extracting the state vectors for the system bodies from system_info
-    body_masses = [entry[0] for entry in system_info]
-    G = 6.67430e-20 # km^3 kg^-1 s^-2
+
     state_derivative:np.ndarray = np.array([
-        state_vec[7], # v1
-        state_vec[8], # v2
-        state_vec[9], # v3
+        state_vec[3], # v1
+        state_vec[4], # v2
+        state_vec[5], # v3
         0,            # a1
         0,            # a2
         0             # a3
     ])
-    for state_vecO in system_states:
+
+    state_derivative[3:6] += -Jupiter_mu * (state_vec[0:3] / (np.linalg.norm(state_vec[0:3])**3)) # Jupiter's contribution to the acceleration
+
+    for i, state_vecO in enumerate(system_states):
         if state_vec != state_vecO:
-            r_vec:np.ndarray = np.array([state_vec[0:3] - state_vecO[0:3]])
+            r_vec:np.ndarray = state_vec[0:3] - state_vecO[0:3]
             r_mag:np.ndarray = np.linalg.norm(r_vec) # magnitude of r vector
-            force_mag = G * body_masses[system_states.index(state_vec)] * body_masses[system_states.index(state_vecO)] / r_mag**2
-            force_vec = [force_mag*r_vec[0] / r_mag, force_mag*r_vec[1] / r_mag, force_mag * r_vec[2] / r_mag]
-            state_derivative[7] += force_vec[0]
-            state_derivative[8] += force_vec[1]
-            state_derivative[9] += force_vec[2]
+            acceleration_vec = -r_vec * moon_mus[i] / r_mag**3
+            state_derivative[3:6] += acceleration_vec[0:3]
     
     return state_derivative
 
-def forces(x:list[float])->list[float]:
+def states_time_hist(system_state0:list, moon_mus:list, Jupiter_mu:float, galilean_forces:Callable, num_method:Callable, t0:int, tf:int, h:int):
     """
-    
-    """
-    x:np.ndarray = np.array(x)
-    Mu = (M + m) * G
-    a_grav = - MU_JUPITER_km * (x/(np.linalg.norm(x)**2))
-    a = a_grav
-    return [
-        x[3],
-        x[4],
-        x[5],
-        a[0],
-        a[1],
-        a[2]
-    ]
-
-def states_time_hist(states0:list, masses:list, f:Callable, t0:int, tf:int, h:int):
-    
-    step_size_nom = (tf-t0)/h
-    step_size = ceil(step_size_nom)
-    
-    
-    """
-    This function takes one of the integrators and  masses of the moons and 
-      loops through the time history, applying the times to the integrator
+    This function takes one of the integrators, the initial states of the moons, 
+    the gravitational parameters of the moons, the initial and final times,
+    and returns an ephemeris for every moon.
     :param states0: The initial states of the moons
-    :param masses: An np array of all the moons' masses
-    :param f: 
+    :param moon_mus: An np array of all the moons' gravitational parameters
+    :param Jupiter_mu: The gravitational parameter of Jupiter
+    :param f: The integrator function to use
     :param t0: time initial
     :param tf: time final
     :param h: Step size
     :returns: A list of all the states between the initial and final time
     """
-    ...
-    state_ephemeris:list[list[float]] = [states0];
-    curr_state = states0
-    io_states:list[list[float]] = []
-    ganymede_states:list[list[float]] = []
-    callisto_states:list[list[float]] = []
-    europa_states:list[list[float]] = []
+    step_count_nom = (tf-t0)/h
+    step_count = ceil(step_count_nom)
 
-    total_time = tf - t0
-    next_state [
-        [],
-        [],
-        [],
-        []
-    ]
+    state_ephemeris:list[list[list[float]]] = [[system_state0]];
+    system_state = system_state0
+    time_vec = [t0]
+    t = t0
+    for k in range(step_count):
+        next_state = system_state.copy()
+        for j, state_vec in enumerate(system_state):
+            next_state[j] = num_method(state_vec, h, t, galilean_forces(state_vec, system_state, moon_mus, Jupiter_mu))
+        state_ephemeris.append(next_state)
+        system_state = next_state
+        time_vec.append(t+h)
 
-    # Set up time step loop
-    i = t0
-    # io
-    while i < total_time:
-        next_state = f(curr_state, h, t0, galilean_forces)
-        state_ephemeris.append(next_state)
-        curr_state = next_state
-        i += h
-    
-    # ganymede
-    while i < total_time:
-        next_state = f(curr_state, h, t0, galilean_forces)
-        state_ephemeris.append(next_state)
-        curr_state = next_state
-        i += h
-
-    # callisto
-    while i < total_time:
-        next_state = f(curr_state, h, t0, galilean_forces)
-        state_ephemeris.append(next_state)
-        curr_state = next_state
-        i += h
-
-    # europa
-    while i < total_time:
-        next_state = f(curr_state, h, t0, galilean_forces)
-        state_ephemeris.append(next_state)
-        curr_state = next_state
-        i += h
     return state_ephemeris
         
     

@@ -7,8 +7,8 @@ from horizons_interface import get_reference_ephemerides
 # )
 
 def main():
-    (vectors_io, vectors_europa, vectors_ganymede, vectors_callisto) = get_reference_ephemerides()
-    print(vectors_io)
+    ephemerides, moon_mus, Jupter_mu = get_reference_ephemerides()
+    vectors_io, vectors_europa, vectors_ganymede, vectors_callisto = ephemerides
     vectors_io_init = vectors_io[0]
     vectors_europa_init = vectors_europa[0]
     vectors_ganymede_init = vectors_ganymede[0]
@@ -23,8 +23,6 @@ def main():
     # Run 
     # system_states = [entry[-6:] for entry in system_info]
     # body_masses = [entry[0] for entry in system_info]
-# Need to define the architecture of the program
-# Before I can start really coding stuff.
 
 if __name__ == "__main__":
     main()
