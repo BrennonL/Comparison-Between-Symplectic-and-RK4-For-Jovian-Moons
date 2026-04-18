@@ -1,1 +1,0 @@
-MU_JUPITER_km = 126_686_531.9 # km³/s² #! Might be different for each moon

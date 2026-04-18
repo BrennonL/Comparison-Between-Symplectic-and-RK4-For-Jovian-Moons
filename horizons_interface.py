@@ -46,6 +46,7 @@ def get_body_data(body_id: str):
     block = text.split("$$SOE", 1)[1].split("$$EOE", 1)[0].strip()
     records = re.split(r"(?=\s*\d+\.\d+\s*=)", block)
 
+    julian_dates = []
     vectors = []
     for rec in records:
         m = re.search(
@@ -60,6 +61,7 @@ def get_body_data(body_id: str):
             re.DOTALL,
         )
         if m:
+            julian_dates.append(float(m.group("jd")))
             vectors.append([
                 float(m.group("x")),
                 float(m.group("y")),
@@ -69,7 +71,7 @@ def get_body_data(body_id: str):
                 float(m.group("vz")),
             ])
 
-    return vectors, mu
+    return julian_dates, vectors, mu
 
 def get_body_mu(body_id: str) -> float:
     params = {
@@ -93,9 +95,14 @@ def get_reference_ephemerides():
 
     moon_data = [get_body_data(body_id) for body_id in moon_ids]
 
-    ephemerides = tuple(vectors for vectors, _ in moon_data)
-    moon_mus = tuple(mu for _, mu in moon_data)
+    time_vec = moon_data[0][0]
+    body_major_ephemerides = [vectors for _, vectors, _ in moon_data]
+    ephemerides = [
+        [body_vectors[step_index] for body_vectors in body_major_ephemerides]
+        for step_index in range(len(time_vec))
+    ]
+    moon_mus = tuple(mu for _, _, mu in moon_data)
 
     Jupter_mu = get_body_mu("599")
 
-    return ephemerides, moon_mus, Jupter_mu
+    return ephemerides, time_vec, moon_mus, Jupter_mu

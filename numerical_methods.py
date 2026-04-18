@@ -3,24 +3,14 @@
 
 import numpy as np
 from typing import Callable
-from constants import (
-    MU_JUPITER_km
-)
 from math import ceil
-from enum import Enum
-# [[[iostate1],[iostate2],[iostate3]],[ganymedestate1],[ganymedestate2]]
-
-# [[io], [gany], [next]]
-
-class Moon(Enum):
-    IO=1
-    EUROPA=2
 
 def galilean_forces(
         state_vec:list[float],
         system_states:list[list[float]], 
         moon_mus:list[float],
         Jupiter_mu:float,
+        moon_index:int,
 )->list[float,float,float,float,float,float]:
     """
     Calculates the state derivative for the specified moon
@@ -42,15 +32,17 @@ def galilean_forces(
     state_derivative[3:6] += -Jupiter_mu * (state_vec[0:3] / (np.linalg.norm(state_vec[0:3])**3)) # Jupiter's contribution to the acceleration
 
     for i, state_vecO in enumerate(system_states):
-        if state_vec != state_vecO:
-            r_vec:np.ndarray = state_vec[0:3] - state_vecO[0:3]
-            r_mag:np.ndarray = np.linalg.norm(r_vec) # magnitude of r vector
-            acceleration_vec = -r_vec * moon_mus[i] / r_mag**3
-            state_derivative[3:6] += acceleration_vec[0:3]
+        if i == moon_index:
+            continue
+
+        r_vec:np.ndarray = state_vec[0:3] - state_vecO[0:3]
+        r_mag:np.ndarray = np.linalg.norm(r_vec) # magnitude of r vector
+        acceleration_vec = -r_vec * moon_mus[i] / r_mag**3
+        state_derivative[3:6] += acceleration_vec[0:3]
     
     return state_derivative
 
-def states_time_hist(system_state0:list, moon_mus:list, Jupiter_mu:float, galilean_forces:Callable, num_method:Callable, t0:int, tf:int, h:int):
+def states_time_hist(system_states0:list, moon_mus:list, Jupiter_mu:float, galilean_forces:Callable, num_method:Callable, t0:int, tf:int, h:int):
     """
     This function takes one of the integrators, the initial states of the moons, 
     the gravitational parameters of the moons, the initial and final times,
@@ -67,23 +59,24 @@ def states_time_hist(system_state0:list, moon_mus:list, Jupiter_mu:float, galile
     step_count_nom = (tf-t0)/h
     step_count = ceil(step_count_nom)
 
-    state_ephemeris:list[list[list[float]]] = [[system_state0]];
-    system_state = system_state0
+    state_ephemeris:list[list[list[float]]] = [system_states0];
+    system_states = system_states0
     time_vec = [t0]
     t = t0
     for k in range(step_count):
-        next_state = system_state.copy()
-        for j, state_vec in enumerate(system_state):
-            next_state[j] = num_method(state_vec, h, t, galilean_forces(state_vec, system_state, moon_mus, Jupiter_mu))
-        state_ephemeris.append(next_state)
-        system_state = next_state
+        next_states = system_states.copy()
+        for j, state_vec in enumerate(system_states):
+            next_states[j] = num_method(state_vec, j, system_states, moon_mus, Jupiter_mu, h, galilean_forces)
+        state_ephemeris.append(next_states)
+        system_states = next_states
         time_vec.append(t+h)
+        t = t + h
 
-    return state_ephemeris
+    return (state_ephemeris, time_vec)
         
     
 
-def RK4(x:np.ndarray, h:int, t:int, f:Callable):
+def RK4(state_vec:np.ndarray, moon_index:int, system_states:list[list[float]], moon_mus:list[float], Jupiter_mu:float, h:int, f:Callable):
     """
     This function takes an initial state, timestep, inital time, and an 
     acceleration function
@@ -93,34 +86,27 @@ def RK4(x:np.ndarray, h:int, t:int, f:Callable):
     :param f: Accelaration function
     :returns: Returns the next state
     """
-    k1:np.ndarray = f(x,t)
-    k2:np.ndarray = f(x+(h/2)*k1, t+(h/2))
-    k3:np.ndarray = f(x+(h/2)*k2, t+(h/2))
-    k4:np.ndarray = f(x+h*k3, t+h)
-    x_next:np.ndarray = x + (h/6) * (k1 + 2*k2 + 2*k3 + k4)
-    return x_next
+    # Important note, this system is not explicitly time-dependent which is why time isn't being passed in as an input to the state's derivative.
+    k1:np.ndarray = f(state_vec, system_states, moon_mus, Jupiter_mu, moon_index)
+    k2:np.ndarray = f(state_vec+(h/2)*k1, system_states, moon_mus, Jupiter_mu, moon_index)
+    k3:np.ndarray = f(state_vec+(h/2)*k2, system_states, moon_mus, Jupiter_mu, moon_index)
+    k4:np.ndarray = f(state_vec+h*k3, system_states, moon_mus, Jupiter_mu, moon_index)
+    state_next:np.ndarray = state_vec + (h/6) * (k1 + 2*k2 + 2*k3 + k4)
 
-# def RK4(f:Callable, state_vec0:np.ndarray, t0:int, tf:int, h:int):
-#     t:int = t0
-#     state_vec:np.ndarray = state_vec0
-#     step_count = (tf - t0) / h 
-#     states:list = [state_vec0]
-#     for i in range(int(step_count)):
-#         k1 = f(state_vec, t)
-#         k2 = f(state_vec + 0.5 * h * k1, t + 0.5 * h)
-#         k3 = f(state_vec + 0.5 * h * k2, t + 0.5 * h)
-#         k4 = f(state_vec + h * k3, t + h)
-#         state_vec += (h / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
-#         t += h
-#         states.append(state_vec)
-#     return states
+    return state_next
 
-def stormer_verlet(state_vec:np.ndarray, h:int, t:int, f:Callable):
+def stormer_verlet(state_vec:np.ndarray, moon_index:int, system_states:list[list[float]], moon_mus:list[float], Jupiter_mu:float, h:int, f:Callable):
     x:list[float] = state_vec[0:3]
     v:list[float] = state_vec[3:6]
-    v_half:float = v + 0.5 * h * f(x, t)
-    x:float = x + h * v_half
-    v:float = v_half + 0.5 * h * f(x, t + h)
-    state_vec = (np.array([x[0], x[1], x[2], v[0], v[1], v[2]]))
+    accel1 = f(state_vec, system_states, moon_mus, Jupiter_mu, moon_index)[3:6]
+
+    v_half:float = v + 0.5 * h * accel1
+    x_next:float = x + h * v_half
+    temp_state = np.array([x_next[0], x_next[1], x_next[2], v_half[0], v_half[1], v_half[2]])
+
+    accel2 = f(temp_state, system_states, moon_mus, Jupiter_mu, moon_index)[3:6]
+
+    v_next:float = v_half + 0.5 * h * accel2
+    state_vec = np.array([x_next[0], x_next[1], x_next[2], v_next[0], v_next[1], v_next[2]])
 
     return state_vec
