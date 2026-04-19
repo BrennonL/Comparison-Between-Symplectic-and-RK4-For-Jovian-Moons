@@ -1,9 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from time import perf_counter
 from horizons_interface import get_reference_ephemerides
 from numerical_methods import (
     RK4,
-    galilean_forces,
+    galilean_derivative,
     stormer_verlet,
     states_time_hist,
 )
@@ -12,9 +13,15 @@ SECONDS_PER_DAY = 86400
 JPL_STEP_DAYS = 10
 SIM_YEARS = 10
 DAYS_PER_YEAR = 365.25
-RK4_SUBSTEPS_PER_JPL_STEP = 20
+METHOD_SUBSTEPS_PER_JPL_STEP = 1000
 
 MOON_NAMES = ("Io", "Europa", "Ganymede", "Callisto")
+
+def format_system_state(label, system_state):
+    lines = [f"{label}:"]
+    for moon_name, state in zip(MOON_NAMES, system_state):
+        lines.append(f"{moon_name}: {np.array(state)}")
+    return "\n".join(lines)
 
 def compute_position_error_histories(reference_ephemeris, method_ephemeris):
     error_histories = {moon_name: [] for moon_name in MOON_NAMES}
@@ -44,11 +51,12 @@ def plot_position_errors(time_days, rk4_errors, symplectic_errors):
     plt.show()
 
 def main():
+    start_time = perf_counter()
     ephemerides, time_vec, moon_mus, Jupter_mu = get_reference_ephemerides()
     system_states0 = [np.array(state, dtype=float) for state in ephemerides[0]]
 
     jpl_step_seconds = JPL_STEP_DAYS * SECONDS_PER_DAY
-    rk4_step_seconds = jpl_step_seconds // RK4_SUBSTEPS_PER_JPL_STEP
+    rk4_step_seconds = jpl_step_seconds // METHOD_SUBSTEPS_PER_JPL_STEP
     total_days = SIM_YEARS * DAYS_PER_YEAR
     total_seconds = int(total_days * SECONDS_PER_DAY)
 
@@ -63,7 +71,7 @@ def main():
         system_states0,
         moon_mus,
         Jupter_mu,
-        galilean_forces,
+        galilean_derivative,
         RK4,
         0,
         total_seconds,
@@ -73,7 +81,7 @@ def main():
         system_states0,
         moon_mus,
         Jupter_mu,
-        galilean_forces,
+        galilean_derivative,
         stormer_verlet,
         0,
         total_seconds,
@@ -95,24 +103,17 @@ def main():
     rk4_errors = compute_position_error_histories(jpl_sampled_ephemeris, rk4_sampled_ephemeris)
     symplectic_errors = compute_position_error_histories(jpl_sampled_ephemeris, symplectic_sampled_ephemeris)
 
-    print(f"Requested comparison epoch: {SIM_YEARS} years ({total_days} days)")
-    print(f"Displayed final-state epoch: {aligned_final_days} days")
-    print(f"RK4 step size: {rk4_step_seconds / SECONDS_PER_DAY} days")
-    print()
-
-    print("JPL final system state:")
-    for moon_name, state in zip(MOON_NAMES, jpl_state_final):
-        print(f"{moon_name}: {np.array(state)}")
-
-    print()
-    print("RK4 final system state:")
-    for moon_name, state in zip(MOON_NAMES, rk4_state_final):
-        print(f"{moon_name}: {np.array(state)}")
-
-    print()
-    print("Stormer-Verlet final system state:")
-    for moon_name, state in zip(MOON_NAMES, symplectic_state_final):
-        print(f"{moon_name}: {np.array(state)}")
+    elapsed_seconds = perf_counter() - start_time
+    report = "\n\n".join([
+        f"Requested comparison epoch: {SIM_YEARS} years ({total_days} days)\n"
+        f"Displayed final-state epoch: {aligned_final_days} days\n"
+        f"RK4 step size: {rk4_step_seconds / SECONDS_PER_DAY} days\n"
+        f"Runtime before plot display: {elapsed_seconds:.2f} seconds",
+        format_system_state("JPL final system state", jpl_state_final),
+        format_system_state("RK4 final system state", rk4_state_final),
+        format_system_state("Stormer-Verlet final system state", symplectic_state_final),
+    ])
+    print(report)
 
     plot_position_errors(time_days, rk4_errors, symplectic_errors)
 
