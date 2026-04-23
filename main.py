@@ -11,7 +11,7 @@ from numerical_methods import (
 
 SECONDS_PER_DAY = 86400
 JPL_STEP_DAYS = 10
-SIM_YEARS = 10
+SIM_YEARS = 200
 DAYS_PER_YEAR = 365.25
 METHOD_SUBSTEPS_PER_JPL_STEP = 1000
 
@@ -34,6 +34,38 @@ def compute_position_error_histories(reference_ephemeris, method_ephemeris):
 
     return error_histories
 
+def compute_system_energy(system_state, moon_mus, Jupter_mu):
+    """
+    Computes a scaled system energy.
+    This is proportional to the physical energy, which is sufficient for
+    comparing energy drift between the numerical methods.
+    """
+    total_energy = 0.0
+
+    for i, state in enumerate(system_state):
+        position = np.array(state[:3], dtype=float)
+        velocity = np.array(state[3:6], dtype=float)
+        radius = np.linalg.norm(position)
+
+        total_energy += 0.5 * moon_mus[i] * np.dot(velocity, velocity)
+        total_energy -= Jupter_mu * moon_mus[i] / radius
+
+    for i in range(len(system_state)):
+        for j in range(i + 1, len(system_state)):
+            position_i = np.array(system_state[i][:3], dtype=float)
+            position_j = np.array(system_state[j][:3], dtype=float)
+            separation = np.linalg.norm(position_i - position_j)
+            total_energy -= moon_mus[i] * moon_mus[j] / separation
+
+    return total_energy
+
+def compute_energy_drift_history(method_ephemeris, moon_mus, Jupter_mu):
+    initial_energy = compute_system_energy(method_ephemeris[0], moon_mus, Jupter_mu)
+    return [
+        compute_system_energy(system_state, moon_mus, Jupter_mu) - initial_energy
+        for system_state in method_ephemeris
+    ]
+
 def plot_position_errors(time_days, rk4_errors, symplectic_errors):
     fig, axes = plt.subplots(2, 2, figsize=(12, 8), sharex=True)
 
@@ -47,6 +79,18 @@ def plot_position_errors(time_days, rk4_errors, symplectic_errors):
         ax.legend()
 
     fig.suptitle("Position Error Relative to JPL")
+    plt.tight_layout()
+    plt.show()
+
+def plot_energy_drift(time_days, rk4_energy_drift, symplectic_energy_drift):
+    plt.figure(figsize=(10, 6))
+    plt.plot(time_days, rk4_energy_drift, label="RK4")
+    plt.plot(time_days, symplectic_energy_drift, label="Stormer-Verlet")
+    plt.title("Energy Drift Over Time")
+    plt.xlabel("Time [days]")
+    plt.ylabel("Energy drift [scaled units]")
+    plt.grid(True)
+    plt.legend()
     plt.tight_layout()
     plt.show()
 
@@ -102,6 +146,8 @@ def main():
     symplectic_sampled_ephemeris = symplectic_ephemeris[::sample_ratio][:aligned_sample_count]
     rk4_errors = compute_position_error_histories(jpl_sampled_ephemeris, rk4_sampled_ephemeris)
     symplectic_errors = compute_position_error_histories(jpl_sampled_ephemeris, symplectic_sampled_ephemeris)
+    rk4_energy_drift = compute_energy_drift_history(rk4_sampled_ephemeris, moon_mus, Jupter_mu)
+    symplectic_energy_drift = compute_energy_drift_history(symplectic_sampled_ephemeris, moon_mus, Jupter_mu)
 
     elapsed_seconds = perf_counter() - start_time
     report = "\n\n".join([
@@ -116,6 +162,7 @@ def main():
     print(report)
 
     plot_position_errors(time_days, rk4_errors, symplectic_errors)
+    plot_energy_drift(time_days, rk4_energy_drift, symplectic_energy_drift)
 
 if __name__ == "__main__":
     main()
