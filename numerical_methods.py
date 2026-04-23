@@ -42,12 +42,12 @@ def galilean_derivative(
 
     return state_derivative.reshape(-1)
 
-# This function creates a big augmented state matrix.
 def augmented_state_packer(system_states: list[list[float]]) -> np.ndarray:
+    """This function creates a big augmented state matrix."""
     return np.array(system_states, dtype=float).reshape(-1)
 
-# This function turns the augmented state matrix back into the standard ephemeris form of list[list[float]]
 def augmented_state_unpack(state_vec: np.ndarray) -> list[np.ndarray]:
+    """This function turns the augmented state matrix back into the standard ephemeris form of list[list[float]]"""
     return [body_state.copy() for body_state in state_vec.reshape(-1, 6)]
 
 def states_time_hist(system_states0:list, moon_mus:list, Jupiter_mu:float, galilean_derivative:Callable, num_method:Callable, t0:int, tf:int, h:int):

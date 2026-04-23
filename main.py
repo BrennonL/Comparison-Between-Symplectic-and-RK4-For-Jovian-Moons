@@ -80,7 +80,8 @@ def plot_position_errors(time_days, rk4_errors, symplectic_errors):
 
     fig.suptitle("Position Error Relative to JPL")
     plt.tight_layout()
-    plt.show()
+    plt.savefig(f"image.png")
+    # plt.show()
 
 def plot_energy_drift(time_days, rk4_energy_drift, symplectic_energy_drift):
     plt.figure(figsize=(10, 6))
@@ -98,6 +99,7 @@ def main():
     start_time = perf_counter()
     ephemerides, time_vec, moon_mus, Jupter_mu = get_reference_ephemerides()
     system_states0 = [np.array(state, dtype=float) for state in ephemerides[0]]
+    print(system_states0)
 
     jpl_step_seconds = JPL_STEP_DAYS * SECONDS_PER_DAY
     rk4_step_seconds = jpl_step_seconds // METHOD_SUBSTEPS_PER_JPL_STEP
