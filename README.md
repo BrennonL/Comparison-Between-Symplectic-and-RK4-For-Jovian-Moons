@@ -4,6 +4,9 @@ This code is supposed to run a comparison between a symplectic integrator and RK
 - Python 3.14.x
 - numpy
 - requests 2.32.5
+- matplotlib
+- requests
+
 
 ## Setup
 Create a local virtual environment and install the project dependencies before opening the code in your editor:
